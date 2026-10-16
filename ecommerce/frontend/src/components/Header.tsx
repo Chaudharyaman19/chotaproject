@@ -12,7 +12,7 @@ export default function Header() {
   const link = 'hover:text-indigo-600 transition font-semibold';
   return (
     <header className="sticky top-0 z-50 glass border-b border-white/40 shadow-[0_4px_24px_rgb(0,0,0,0.06)]">
-      <div className="bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 text-white text-xs text-center py-1.5 px-4 font-medium">✨ Aman Free delivery on orders over $50 — Cash on Delivery available</div>
+      <div className="bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 text-white text-xs text-center py-1.5 px-4 font-medium">✨ Aman Chaudhary Free delivery on orders over $50 — Cash on Delivery available</div>
       <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
         <Link href="/" className="flex items-center gap-2">
           <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-600 to-fuchsia-600 grid place-items-center text-white shadow-lg"><ShoppingBag size={18} /></span>
