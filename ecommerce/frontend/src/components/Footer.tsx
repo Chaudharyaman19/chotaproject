@@ -46,13 +46,13 @@ export default function Footer() {
         </div>
 
         <div className="overflow-hidden py-6 md:py-10" aria-hidden>
-          <p className="select-none text-center font-medium uppercase leading-[0.8] tracking-[-0.06em] text-head/90" style={{ fontSize: 'clamp(4rem, 19.5vw, 19rem)' }}>
-            shopeasy
+          <p className="select-none whitespace-nowrap text-center font-medium uppercase leading-[0.8] tracking-[-0.06em] text-head/90" style={{ fontSize: 'clamp(3rem, 16.2vw, 16rem)' }}>
+            Apni Dukan
           </p>
         </div>
 
         <div className="flex flex-col gap-2 border-t border-dotted border-fg/50 py-5 font-mono text-[12px] sm:flex-row sm:items-center sm:justify-between">
-          <p>© 2026 ShopEasy. All rights reserved.</p>
+          <p>© 2026 Apni Dukan. All rights reserved.</p>
           <p>Cash on delivery · Free delivery over $50</p>
         </div>
       </div>

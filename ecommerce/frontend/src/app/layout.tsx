@@ -15,7 +15,7 @@ const sans = Inter_Tight({ subsets: ['latin'], variable: '--font-sans', display:
 const mono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono', display: 'swap', weight: ['400', '500'] });
 
 export const metadata: Metadata = {
-  title: { default: 'ShopEasy: Everyday objects, delivered', template: '%s | ShopEasy' },
+  title: { default: 'Apni Dukan: Everyday objects, delivered', template: '%s | Apni Dukan' },
   description: 'A considered catalogue of everyday objects at fair prices. Pay in cash when it arrives.',
 };
 

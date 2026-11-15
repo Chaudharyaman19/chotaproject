@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: 'About' };
 export default function About() {
   return (
     <>
-      <PageHero eyebrow="About ShopEasy" title="Objects, chosen with care">
+      <PageHero eyebrow="About Apni Dukan" title="Objects, chosen with care">
         A small shop with a simple idea: sell fewer, better things, price them honestly, and get out of your way.
       </PageHero>
 
@@ -25,7 +25,7 @@ export default function About() {
           </div>
           <div className="space-y-5 p-6 md:p-12">
             <p className="mono">Endless scrolling, hidden fees, checkout forms that ask for your whole life. We wanted a shop that respects your time: a focused catalogue, prices you can trust, and payment when your order shows up at the door.</p>
-            <p className="mono">So that’s what ShopEasy is. Every product is chosen to earn its place, every price is the price, and every order is cash on delivery. If you change your mind, cancelling a pending order takes one click.</p>
+            <p className="mono">So that’s what Apni Dukan is. Every product is chosen to earn its place, every price is the price, and every order is cash on delivery. If you change your mind, cancelling a pending order takes one click.</p>
           </div>
         </div>
       </div>

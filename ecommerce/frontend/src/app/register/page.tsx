@@ -30,7 +30,7 @@ export default function Register() {
   };
 
   return (
-    <AuthShell eyebrow="Join ShopEasy" title="Create account" blurb="One account for your bag and orders. Takes ten seconds.">
+    <AuthShell eyebrow="Join Apni Dukan" title="Create account" blurb="One account for your bag and orders. Takes ten seconds.">
       <form onSubmit={submit} className="mt-8 space-y-7 lg:mt-0">
         <Field id="name" label="Full name" autoComplete="name" required minLength={2} value={name} onChange={(e) => setName(e.target.value)} />
         <Field id="email" label="Email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />

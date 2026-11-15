@@ -8,7 +8,7 @@ export default function Terms() {
     <LegalPage
       eyebrow="Legal"
       title="Terms of service"
-      intro="The ground rules for using ShopEasy and placing orders."
+      intro="The ground rules for using Apni Dukan and placing orders."
       sections={[
         { h: 'Using the site', p: ['You need an account to place an order. Keep your login details private and let us know if you suspect someone else has used them.'] },
         { h: 'Orders & pricing', p: ['Prices and availability can change without notice. An order is accepted when we confirm it, and we may cancel an order if an item is unavailable or a price was listed in error, in which case you will not be charged.'] },

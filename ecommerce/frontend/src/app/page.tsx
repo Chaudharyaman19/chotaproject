@@ -368,7 +368,7 @@ export default function Home() {
               <div className="grid grid-cols-[1fr_auto] md:grid-cols-2">
                 <Cell className="rule-t flex flex-col justify-between gap-8 px-5 py-8 md:px-10">
                   <p className="mono">“We would rather sell you one thing you keep than five you send back.”</p>
-                  <p className="mono text-head">The ShopEasy team</p>
+                  <p className="mono text-head">The Apni Dukan team</p>
                 </Cell>
                 <Link href="/products" className="group relative flex min-h-[200px] flex-col justify-between bg-accent p-6 text-onaccent">
                   <span className="flex items-start justify-between font-mono text-[13px]">
@@ -416,7 +416,7 @@ export default function Home() {
             </Cell>
             <div className="grid md:grid-cols-2">
               {[
-                { h: 'With ShopEasy', icon: ShieldCheck, rows: ['Cash on delivery, no card needed', 'Free delivery over $50', 'Cancel pending orders in one click', 'Live stock counts on every product'] },
+                { h: 'With Apni Dukan', icon: ShieldCheck, rows: ['Cash on delivery, no card needed', 'Free delivery over $50', 'Cancel pending orders in one click', 'Live stock counts on every product'] },
                 { h: 'The usual online store', icon: Banknote, rows: ['Card details required up front', 'Delivery fees from the first item', 'Cancel by emailing support', 'Surprise out-of-stock emails'], dim: true },
               ].map((col, ci) => (
                 <Cell key={col.h} className={`rule-t px-5 py-8 md:px-10 md:py-12 ${ci ? 'md:rule-l' : ''}`}>

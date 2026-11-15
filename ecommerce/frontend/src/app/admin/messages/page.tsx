@@ -70,7 +70,7 @@ export default function AdminMessages() {
                       <p className="font-mono text-[12px]">{m.name} · <a href={`mailto:${m.email}`} className="link">{m.email}</a> · {formatDateTime(m.createdAt)}</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <a href={`mailto:${m.email}?subject=${encodeURIComponent('Re: ' + (m.subject || 'Your message to ShopEasy'))}`} className="pill pill-sm"><Mail size={12} /> Reply</a>
+                      <a href={`mailto:${m.email}?subject=${encodeURIComponent('Re: ' + (m.subject || 'Your message to Apni Dukan'))}`} className="pill pill-sm"><Mail size={12} /> Reply</a>
                       <button onClick={() => toggle(m)} className={`pill pill-sm ${m.handled ? '' : 'pill-accent'}`}><Check size={12} /> {m.handled ? 'Reopen' : 'Mark done'}</button>
                     </div>
                   </div>

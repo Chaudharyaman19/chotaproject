@@ -3,15 +3,28 @@ import Link from 'next/link';
 import { Moon, Sun } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 
-/** Wordmark: a crosshair mark (nod to the blueprint grid) + lowercase name. */
+/** Storefront mark: a scalloped awning over a shop front with a door (the accent colour follows the theme). */
+export function LogoMark({ size = 30, className = '' }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 32 32" fill="none" aria-hidden className={className}>
+      {/* awning */}
+      <path d="M5 4H27L30 12a3.5 3.5 0 0 1-7 0 3.5 3.5 0 0 1-7 0 3.5 3.5 0 0 1-7 0 3.5 3.5 0 0 1-7 0Z" fill="rgb(var(--accentfg))" fillOpacity=".3" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
+      <path d="M11 4 9 12M16 4v8M21 4l2 8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" opacity=".55" />
+      {/* shop front */}
+      <path d="M5 15.5V27a1 1 0 0 0 1 1h20a1 1 0 0 0 1-1V15.5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+      {/* door */}
+      <path d="M13 28v-7.5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1V28Z" fill="rgb(var(--accentfg))" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+      <circle cx="17.3" cy="24.2" r=".9" fill="currentColor" />
+    </svg>
+  );
+}
+
+/** Brand lockup used in the navbar, footer and admin sidebar. */
 export function Logo({ className = '' }: { className?: string }) {
   return (
-    <Link href="/" aria-label="ShopEasy home" className={`inline-flex items-center gap-2.5 text-head ${className}`}>
-      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden>
-        <circle cx="11" cy="11" r="10" stroke="currentColor" strokeWidth="1.5" />
-        <path d="M11 5v12M5 11h12" stroke="rgb(var(--accentfg))" strokeWidth="2" strokeLinecap="round" />
-      </svg>
-      <span className="text-[20px] font-medium leading-none tracking-[-0.05em] sm:text-[24px]">shopeasy</span>
+    <Link href="/" aria-label="Apni Dukan home" className={`group inline-flex items-center gap-2.5 text-head ${className}`}>
+      <LogoMark className="transition-transform duration-500 group-hover:-rotate-6" />
+      <span className="text-[21px] font-medium leading-none tracking-[-0.045em] sm:text-[25px]">Apni Dukan</span>
     </Link>
   );
 }
