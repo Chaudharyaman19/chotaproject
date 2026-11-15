@@ -2,25 +2,78 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-
-:root { color-scheme: light; }
-html { scroll-behavior: smooth; }
-body { font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif; background: #f6f7fb; color: #0f172a; }
-
-@layer components {
-  .btn-primary { @apply inline-flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 text-white font-semibold px-5 py-2.5 rounded-xl shadow-lg shadow-indigo-600/25 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 transition-all; }
-  .btn-ghost { @apply inline-flex items-center justify-center gap-2 bg-white border border-slate-200 font-semibold px-5 py-2.5 rounded-xl hover:border-indigo-300 hover:text-indigo-700 transition-all; }
-  .card { @apply bg-white rounded-2xl border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.06)]; }
-  .input { @apply w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition; }
-  .chip { @apply inline-flex items-center text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full; }
-  .page-title { @apply text-2xl md:text-3xl font-extrabold tracking-tight; }
+:root {
+  color-scheme: light;
 }
 
-.hero-grid { background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,.25) 1px, transparent 0); background-size: 22px 22px; }
-.glass { backdrop-filter: blur(12px); background: rgba(255,255,255,.8); }
-@keyframes floaty { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
-.animate-floaty { animation: floaty 5s ease-in-out infinite; }
-@keyframes fadeUp { from{opacity:0; transform:translateY(14px)} to{opacity:1; transform:none} }
-.animate-fadeUp { animation: fadeUp .5s ease both; }
-.no-scrollbar::-webkit-scrollbar{display:none} .no-scrollbar{scrollbar-width:none}
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-size: 14px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: rgba(0, 0, 0, 0.12);
+}
+
+:focus-visible {
+  outline: 2px solid #111;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}
+
+@layer components {
+  /* ---- layout containers ---- */
+  .wrap { @apply mx-auto w-full max-w-[1120px] px-4 md:px-6; }
+  .wrap-sm { @apply mx-auto w-full max-w-[520px] px-4; }
+
+  /* ---- buttons: small, square-ish, flat ---- */
+  .btn {
+    @apply inline-flex h-9 select-none items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-4 text-[13px] font-medium leading-none
+           transition duration-150 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40;
+  }
+  .btn-primary { @apply btn bg-ink text-white hover:bg-accent-hover; }
+  .btn-secondary { @apply btn border border-line bg-white text-ink hover:bg-canvas; }
+  .btn-gray { @apply btn bg-canvas text-ink hover:bg-black/[0.07]; }
+  /* size modifier must come after the variants so it wins */
+  .btn-sm { @apply h-7 px-3 text-xs; }
+
+  /* ---- text links ---- */
+  .link { @apply text-ink underline-offset-2 hover:underline; }
+  .link-more::after { content: '\203A'; margin-left: 0.25em; }
+
+  /* ---- type scale ---- */
+  .eyebrow { @apply text-[11px] font-medium uppercase tracking-wide text-mute; }
+  .h-hero { @apply text-xl font-semibold tracking-tight md:text-2xl; }
+  .h-section { @apply text-sm font-semibold; }
+  .h-page { @apply text-lg font-semibold tracking-tight md:text-xl; }
+
+  /* ---- native select, restyled ---- */
+  .select {
+    @apply h-8 cursor-pointer appearance-none rounded-md border border-line bg-white pl-3 pr-7 text-xs text-ink outline-none
+           transition hover:bg-canvas focus-visible:border-ink;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236b6b6b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 9px center;
+    background-size: 10px;
+  }
+
+  /* ---- loading skeleton ---- */
+  .skeleton {
+    @apply rounded-md bg-black/[0.05];
+    background-image: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.7), transparent);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s linear infinite;
+  }
+}
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }

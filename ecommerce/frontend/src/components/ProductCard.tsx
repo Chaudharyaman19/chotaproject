@@ -1,28 +1,70 @@
 'use client';
 import Link from 'next/link';
-import { ShoppingCart, Star } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Check, Plus } from 'lucide-react';
 import { Product } from '../types';
 import { useCart } from '../context/CartContext';
+import { formatPrice } from '../lib/format';
 
 export default function ProductCard({ p }: { p: Product }) {
   const { add } = useCart();
+  const [added, setAdded] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout>>();
+  useEffect(() => () => clearTimeout(timer.current), []);
+
+  const soldOut = p.stock === 0;
+  const low = p.stock > 0 && p.stock <= 5;
+
+  const onAdd = () => {
+    add(p);
+    setAdded(true);
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => setAdded(false), 1400);
+  };
+
   return (
-    <div className="card overflow-hidden flex flex-col group hover:-translate-y-1 hover:shadow-xl transition-all duration-300 animate-fadeUp">
-      <Link href={`/products/${p._id}`} className="relative overflow-hidden">
-        <img src={p.image} alt={p.name} loading="lazy" className="h-52 w-full object-cover group-hover:scale-105 transition duration-500" />
-        <span className="absolute top-3 left-3 chip bg-white/90 text-indigo-700 shadow">{p.category}</span>
-        {p.stock <= 5 && p.stock > 0 && <span className="absolute top-3 right-3 chip bg-amber-400 text-amber-950">Only {p.stock} left</span>}
-        {p.stock === 0 && <span className="absolute top-3 right-3 chip bg-red-500 text-white">Sold out</span>}
+    <article className="group flex h-full flex-col">
+      <Link href={`/products/${p._id}`} aria-label={p.name} className="relative block aspect-square overflow-hidden rounded-lg border border-line bg-canvas">
+        <img
+          src={p.image}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          // If a seeded image URL ever disappears, fall back to the plain grey tile instead of a broken-image icon.
+          onError={(e) => (e.currentTarget.style.visibility = 'hidden')}
+          className={`h-full w-full object-cover transition duration-300 group-hover:scale-[1.03] ${soldOut ? 'opacity-50 grayscale' : ''}`}
+        />
+        {soldOut && <span className="absolute left-2 top-2 rounded bg-white px-1.5 py-0.5 text-[10px] font-medium text-mute">Sold out</span>}
       </Link>
-      <div className="p-4 flex flex-col gap-1.5 flex-1">
-        <span className="flex items-center gap-1 text-xs text-amber-500 font-bold"><Star size={13} fill="currentColor"/>4.8 <span className="text-slate-400 font-medium">(120+)</span></span>
-        <Link href={`/products/${p._id}`} className="font-bold leading-snug hover:text-indigo-600 line-clamp-1">{p.name}</Link>
-        <div className="flex items-center justify-between">
-          <span className="text-lg font-extrabold">${p.price.toFixed(2)}</span>
-          <span className={`text-xs font-semibold ${p.stock > 0 ? 'text-emerald-600' : 'text-red-500'}`}>{p.stock > 0 ? `● In stock` : '● Out of stock'}</span>
+
+      <div className="mt-2 flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <h3 className="truncate text-[13px] font-medium">
+            <Link href={`/products/${p._id}`} className="hover:underline">
+              {p.name}
+            </Link>
+          </h3>
+          <p className={`truncate text-[11px] ${low ? 'text-warn' : 'text-mute'}`}>{low ? `Only ${p.stock} left` : p.category}</p>
         </div>
-        <button disabled={p.stock === 0} onClick={() => add(p)} className="btn-primary mt-2 !py-2 text-sm disabled:opacity-40 disabled:pointer-events-none"><ShoppingCart size={16} /> Add to Cart</button>
+        <span className="shrink-0 text-[13px] font-medium tabular-nums">{formatPrice(p.price)}</span>
       </div>
-    </div>
+
+      <button
+        type="button"
+        disabled={soldOut}
+        onClick={onAdd}
+        className={`btn btn-sm mt-2 w-full ${added ? 'bg-[#1d7a36] text-white' : 'border border-line bg-white text-ink hover:bg-ink hover:text-white'}`}
+      >
+        {added ? (
+          <>
+            <Check size={13} className="animate-pop" /> Added
+          </>
+        ) : (
+          <>
+            <Plus size={13} /> Add to bag
+          </>
+        )}
+      </button>
+    </article>
   );
 }

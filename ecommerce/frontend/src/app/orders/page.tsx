@@ -1,27 +1,88 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { Package, Ban } from 'lucide-react';
+import Link from 'next/link';
 import { api } from '../../lib/api';
+import { formatDate, formatPrice } from '../../lib/format';
 import { Order } from '../../types';
 import { useAuth } from '../../context/AuthContext';
+import StatusPill from '../../components/StatusPill';
+import SignInPrompt from '../../components/SignInPrompt';
 import Loading from '../../components/Loading';
-const colors: Record<string,string> = { PENDING:'bg-amber-100 text-amber-800', CONFIRMED:'bg-blue-100 text-blue-700', SHIPPED:'bg-violet-100 text-violet-700', DELIVERED:'bg-emerald-100 text-emerald-700', CANCELLED:'bg-red-100 text-red-600' };
+
 export default function OrdersPage() {
-  const { user } = useAuth();
-  const [orders, setOrders] = useState<Order[]>([]); const [loading, setLoading] = useState(true);
-  const load = () => api.get('/orders/my').then((d)=>setOrders(d.orders||[])).catch(()=>{}).finally(()=>setLoading(false));
-  useEffect(()=>{ if(user) load(); else setLoading(false); },[user]);
-  if (!user) return <p className="card mt-8 p-10 text-center">Please <a href="/login" className="text-indigo-600 font-bold">login</a> to view orders.</p>;
-  if (loading) return <Loading/>;
-  const cancel = async (id:string)=>{ if(!confirm('Cancel this order?')) return; await api.patch(`/orders/${id}/cancel`,{}); load(); };
-  return (<div className="py-8">
-    <p className="text-xs font-bold uppercase tracking-widest text-fuchsia-600">History</p><h1 className="page-title">My Orders</h1>
-    {orders.length===0 ? <div className="card p-10 mt-4 text-center text-slate-500"><Package size={30} className="mx-auto text-indigo-300"/><p className="mt-2 font-semibold">No orders yet. Your stylish finds will appear here.</p></div> : (
-    <div className="space-y-3 mt-4">{orders.map((o)=>(<div key={o._id} className="card p-5 text-sm animate-fadeUp">
-      <div className="flex flex-wrap justify-between gap-2 items-center"><span className="font-extrabold">#{o.orderNumber}</span><span className={`chip ${colors[o.status]||'bg-slate-100'}`}>{o.status}</span></div>
-      <div className="mt-2 divide-y divide-slate-100">{o.items.map((it,i)=><div key={i} className="flex justify-between py-1.5 text-slate-600"><span>{it.name} x {it.quantity}</span><span className="font-semibold text-slate-800">${(it.price*it.quantity).toFixed(2)}</span></div>)}</div>
-      <div className="flex flex-wrap justify-between mt-2 pt-2 border-t font-extrabold"><span>Total (COD · {o.paymentStatus})</span><span>${o.total.toFixed(2)}</span></div>
-      {(o.status==='PENDING'||o.status==='CONFIRMED') && <button onClick={()=>cancel(o._id)} className="mt-2 text-red-600 text-sm font-bold flex items-center gap-1 hover:bg-red-50 px-2 py-1 rounded-lg"><Ban size={14}/> Cancel order</button>}
-    </div>))}</div>)}
-  </div>);
+  const { user, loading: authLoading } = useAuth();
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = () =>
+    api
+      .get('/orders/my')
+      .then((d) => setOrders(d.orders ?? []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+
+  useEffect(() => {
+    if (user) load();
+    else setLoading(false);
+  }, [user]);
+
+  if (authLoading || (user && loading)) return <Loading />;
+  if (!user) return <SignInPrompt message="Sign in to see your orders." />;
+
+  const cancel = async (id: string) => {
+    if (!confirm('Cancel this order?')) return;
+    await api.patch(`/orders/${id}/cancel`, {});
+    load();
+  };
+
+  return (
+    <div className="wrap py-5">
+      <h1 className="h-page">Your orders</h1>
+
+      {orders.length === 0 ? (
+        <div className="py-16 text-center">
+          <p className="text-sm font-medium">No orders yet.</p>
+          <p className="mt-1 text-xs text-mute">When you place an order, you’ll find it here.</p>
+          <Link href="/products" className="btn-primary mt-4">
+            Start shopping
+          </Link>
+        </div>
+      ) : (
+        <ul className="mt-4 space-y-3">
+          {orders.map((o) => (
+            <li key={o._id} className="animate-fade-up rounded-lg border border-line p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-[13px]">
+                  <span className="font-semibold">Order #{o.orderNumber}</span> <span className="text-mute">· {formatDate(o.createdAt)}</span>
+                </p>
+                <StatusPill status={o.status} />
+              </div>
+
+              <ul className="mt-2 divide-y divide-line border-t border-line text-[13px]">
+                {o.items.map((it, i) => (
+                  <li key={i} className="flex justify-between gap-4 py-1.5">
+                    <span>
+                      {it.name} <span className="text-mute">× {it.quantity}</span>
+                    </span>
+                    <span className="tabular-nums">{formatPrice(it.price * it.quantity)}</span>
+                  </li>
+                ))}
+              </ul>
+
+              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-2">
+                <p className="text-xs text-mute">Cash on delivery · {o.paymentStatus.toLowerCase()}</p>
+                <p className="text-sm font-semibold">{formatPrice(o.total)}</p>
+              </div>
+
+              {(o.status === 'PENDING' || o.status === 'CONFIRMED') && (
+                <button onClick={() => cancel(o._id)} className="link mt-1 text-xs text-mute">
+                  Cancel order
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
 }

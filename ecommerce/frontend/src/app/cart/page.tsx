@@ -1,22 +1,75 @@
 'use client';
 import Link from 'next/link';
-import { Trash2, Minus, Plus, ShoppingBag, ArrowRight } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
+import { formatPrice } from '../../lib/format';
+import QtyStepper from '../../components/QtyStepper';
+
 export default function CartPage() {
-  const { items, updateQty, remove, subtotal } = useCart();
-  if (items.length===0) return <div className="py-16 text-center card mt-8 p-10"><span className="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-600 grid place-items-center mx-auto"><ShoppingBag size={24}/></span><h1 className="page-title mt-3">Your cart is empty</h1><p className="text-slate-500 text-sm mt-1">Add some stylish products first.</p><Link href="/products" className="btn-primary mt-5">Browse products <ArrowRight size={16}/></Link></div>;
-  return (<div className="py-8 grid lg:grid-cols-3 gap-5">
-    <div className="lg:col-span-2 space-y-3"><h1 className="page-title">Shopping Cart ({items.length})</h1>
-      {items.map((i)=>(<div key={i.product._id} className="card p-3.5 flex gap-4 items-center animate-fadeUp">
-        <img src={i.product.image} alt={i.product.name} className="w-20 h-20 object-cover rounded-xl"/>
-        <div className="flex-1 min-w-0"><p className="font-bold truncate">{i.product.name}</p><p className="text-sm text-slate-500">${i.product.price.toFixed(2)} each</p>
-          <div className="flex items-center gap-2 mt-2">
-            <span className="flex items-center border border-slate-200 rounded-lg overflow-hidden"><button onClick={()=>updateQty(i.product._id,i.quantity-1)} className="px-2.5 py-1 hover:bg-slate-50"><Minus size={13}/></button><span className="w-8 text-center text-sm font-bold">{i.quantity}</span><button onClick={()=>updateQty(i.product._id,i.quantity+1)} className="px-2.5 py-1 hover:bg-slate-50"><Plus size={13}/></button></span>
-            <button onClick={()=>remove(i.product._id)} className="text-red-500 text-sm font-semibold flex items-center gap-1 hover:bg-red-50 px-2 py-1 rounded-lg"><Trash2 size={14}/> Remove</button>
-          </div></div>
-        <span className="font-extrabold">${(i.product.price*i.quantity).toFixed(2)}</span>
-      </div>))}
+  const { items, updateQty, remove, subtotal, count } = useCart();
+
+  if (items.length === 0)
+    return (
+      <div className="wrap-sm py-16 text-center">
+        <h1 className="h-page">Your bag is empty</h1>
+        <p className="mt-1 text-[13px] text-mute">Items you add will show up here.</p>
+        <Link href="/products" className="btn-primary mt-5">
+          Continue shopping
+        </Link>
+      </div>
+    );
+
+  const delivery = subtotal > 50 ? 0 : 4.99;
+
+  return (
+    <div className="wrap py-5">
+      <h1 className="h-page">
+        Your bag <span className="font-normal text-mute">· {count} {count === 1 ? 'item' : 'items'}</span>
+      </h1>
+
+      <div className="mt-4 grid gap-6 lg:grid-cols-[1fr_320px]">
+        <ul className="divide-y divide-line border-y border-line">
+          {items.map((i) => (
+            <li key={i.product._id} className="flex items-center gap-3 py-3">
+              <Link href={`/products/${i.product._id}`} className="shrink-0">
+                <img src={i.product.image} alt={i.product.name} className="h-14 w-14 rounded-md border border-line bg-canvas object-cover" />
+              </Link>
+              <div className="min-w-0 flex-1">
+                <Link href={`/products/${i.product._id}`} className="block truncate text-[13px] font-medium hover:underline">
+                  {i.product.name}
+                </Link>
+                <p className="text-xs text-mute">{formatPrice(i.product.price)} each</p>
+                <button onClick={() => remove(i.product._id)} className="link mt-0.5 text-xs text-mute">
+                  Remove
+                </button>
+              </div>
+              <QtyStepper value={i.quantity} min={0} max={i.product.stock} onChange={(q) => updateQty(i.product._id, q)} />
+              <span className="w-16 text-right text-[13px] font-medium tabular-nums">{formatPrice(i.product.price * i.quantity)}</span>
+            </li>
+          ))}
+        </ul>
+
+        <aside className="h-fit rounded-lg border border-line p-4 lg:sticky lg:top-16">
+          <h2 className="h-section">Order summary</h2>
+          <dl className="mt-3 space-y-2 text-[13px]">
+            <div className="flex justify-between">
+              <dt className="text-mute">Subtotal</dt>
+              <dd>{formatPrice(subtotal)}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-mute">Delivery</dt>
+              <dd>{delivery === 0 ? 'Free' : formatPrice(delivery)}</dd>
+            </div>
+            <div className="flex justify-between border-t border-line pt-2 text-sm font-semibold">
+              <dt>Total</dt>
+              <dd>{formatPrice(subtotal + delivery)}</dd>
+            </div>
+          </dl>
+          <Link href="/checkout" className="btn-primary mt-4 w-full">
+            Check out
+          </Link>
+          <p className="mt-2 text-center text-[11px] text-mute">Pay in cash when your order arrives.</p>
+        </aside>
+      </div>
     </div>
-    <div className="card p-6 h-fit lg:sticky lg:top-32"><h2 className="font-extrabold text-lg">Order summary</h2><div className="flex justify-between text-sm mt-3"><span className="text-slate-500">Subtotal</span><b>${subtotal.toFixed(2)}</b></div><div className="flex justify-between text-sm mt-1"><span className="text-slate-500">Delivery</span><b className="text-emerald-600">{subtotal>50?'FREE':'$4.99'}</b></div><div className="border-t mt-3 pt-3 flex justify-between font-extrabold text-lg"><span>Total</span><span>${(subtotal+(subtotal>50?0:4.99)).toFixed(2)}</span></div><Link href="/checkout" className="btn-primary w-full mt-4">Checkout <ArrowRight size={16}/></Link><Link href="/products" className="btn-ghost w-full mt-2 text-sm">Continue shopping</Link></div>
-  </div>);
+  );
 }

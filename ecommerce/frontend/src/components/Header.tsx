@@ -1,42 +1,189 @@
 'use client';
 import Link from 'next/link';
-import { useState } from 'react';
-import { Menu, ShoppingBag, X, User as UIcon, LogOut, Sparkles, LayoutDashboard, Package } from 'lucide-react';
+import { usePathname } from 'next/navigation';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { LayoutDashboard, LogOut, Menu, Package, Search, ShoppingBag, User as UserIcon, X } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
+import SearchPanel from './SearchPanel';
 
 export default function Header() {
   const { count } = useCart();
   const { user, logout } = useAuth();
-  const [open, setOpen] = useState(false);
-  const link = 'hover:text-indigo-600 transition font-semibold';
+  const pathname = usePathname();
+  const [menu, setMenu] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const [account, setAccount] = useState(false);
+  const accountRef = useRef<HTMLDivElement>(null);
+  const closeSearch = useCallback(() => setSearching(false), []);
+
+  const links = [
+    { href: '/', label: 'Home' },
+    { href: '/products', label: 'Shop' },
+    { href: '/orders', label: 'Orders' },
+    ...(user?.role === 'ADMIN' ? [{ href: '/admin', label: 'Admin' }] : []),
+  ];
+  const isActive = (href: string) => (href === '/' ? pathname === '/' : pathname.startsWith(href));
+
+  // Close every flyout when the route changes.
+  useEffect(() => {
+    setMenu(false);
+    setSearching(false);
+    setAccount(false);
+  }, [pathname]);
+
+  // Don't let the page scroll behind a full-screen menu / search.
+  useEffect(() => {
+    document.body.style.overflow = menu || searching ? 'hidden' : '';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [menu, searching]);
+
+  // Account dropdown: close on outside click or Escape.
+  useEffect(() => {
+    if (!account) return;
+    const onDown = (e: MouseEvent) => !accountRef.current?.contains(e.target as Node) && setAccount(false);
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setAccount(false);
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [account]);
+
+  const iconBtn = 'relative grid h-11 w-8 place-items-center text-ink/70 transition hover:text-ink';
+  const menuItem = 'flex items-center gap-2.5 px-3 py-2 hover:bg-canvas';
+
   return (
-    <header className="sticky top-0 z-50 glass border-b border-white/40 shadow-[0_4px_24px_rgb(0,0,0,0.06)]">
-      <div className="bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 text-white text-xs text-center py-1.5 px-4 font-medium">✨ Aman Chaudhary Free delivery on orders over $50 — Cash on Delivery available</div>
-      <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-        <Link href="/" className="flex items-center gap-2">
-          <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-600 to-fuchsia-600 grid place-items-center text-white shadow-lg"><ShoppingBag size={18} /></span>
-          <span className="text-xl font-extrabold tracking-tight">Shop<span className="bg-gradient-to-r from-indigo-600 to-fuchsia-600 bg-clip-text text-transparent">Easy</span></span>
-        </Link>
-        <nav className="hidden md:flex gap-7 text-sm text-slate-600">
-          <Link className={link} href="/">Home</Link>
-          <Link className={link} href="/products">Products</Link>
-          <Link className={link} href="/orders">My Orders</Link>
-          {user?.role === 'ADMIN' && <Link className="flex items-center gap-1 text-indigo-700 font-bold" href="/admin"><LayoutDashboard size={15} />Admin</Link>}
+    <>
+      <header className="sticky top-0 z-50 border-b border-line bg-white/90 backdrop-blur">
+        <nav aria-label="Main" className="wrap flex h-11 items-center justify-between">
+          <Link href="/" className="text-[15px] font-semibold tracking-tight" aria-label="ShopEasy home">
+            ShopEasy
+          </Link>
+
+          <ul className="hidden items-center gap-6 md:flex">
+            {links.map((l) => (
+              <li key={l.href}>
+                <Link
+                  href={l.href}
+                  aria-current={isActive(l.href) ? 'page' : undefined}
+                  className={`text-[13px] transition ${isActive(l.href) ? 'font-medium text-ink' : 'text-mute hover:text-ink'}`}
+                >
+                  {l.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+
+          <div className="flex items-center">
+            <button aria-label={searching ? 'Close search' : 'Search'} aria-expanded={searching} onClick={() => { setSearching((s) => !s); setMenu(false); }} className={iconBtn}>
+              {searching ? <X size={16} /> : <Search size={16} />}
+            </button>
+
+            <Link href="/cart" aria-label={`Bag, ${count} items`} className={iconBtn}>
+              <ShoppingBag size={16} />
+              {count > 0 && (
+                <span className="absolute right-[-2px] top-2 grid h-4 min-w-4 place-items-center rounded-full bg-ink px-1 text-[10px] font-semibold leading-none text-white">
+                  {count}
+                </span>
+              )}
+            </Link>
+
+            {/* Account: sign-in link when logged out, dropdown when logged in */}
+            <div ref={accountRef} className="relative hidden md:block">
+              {user ? (
+                <>
+                  <button aria-label="Account menu" aria-expanded={account} onClick={() => setAccount((a) => !a)} className={iconBtn}>
+                    <span className="grid h-5 w-5 place-items-center rounded-full bg-ink text-[10px] font-semibold text-white">
+                      {user.name.charAt(0).toUpperCase()}
+                    </span>
+                  </button>
+                  {account && (
+                    <div className="absolute right-0 top-10 w-52 animate-fade-in overflow-hidden rounded-lg border border-line bg-white text-[13px]">
+                      <div className="border-b border-line px-3 py-2">
+                        <p className="truncate font-medium">{user.name}</p>
+                        <p className="truncate text-xs text-mute">{user.email}</p>
+                      </div>
+                      <Link href="/orders" className={menuItem}>
+                        <Package size={14} className="text-mute" /> Orders
+                      </Link>
+                      {user.role === 'ADMIN' && (
+                        <Link href="/admin" className={menuItem}>
+                          <LayoutDashboard size={14} className="text-mute" /> Admin
+                        </Link>
+                      )}
+                      <button onClick={logout} className={`${menuItem} w-full border-t border-line text-left`}>
+                        <LogOut size={14} className="text-mute" /> Sign out
+                      </button>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <Link href="/login" aria-label="Sign in" className={iconBtn}>
+                  <UserIcon size={16} />
+                </Link>
+              )}
+            </div>
+
+            <button aria-label={menu ? 'Close menu' : 'Open menu'} aria-expanded={menu} aria-controls="mobile-menu" onClick={() => { setMenu((m) => !m); setSearching(false); }} className={`${iconBtn} md:hidden`}>
+              {menu ? <X size={17} /> : <Menu size={17} />}
+            </button>
+          </div>
         </nav>
-        <div className="hidden md:flex items-center gap-2 text-sm">
-          <Link href="/cart" className="relative btn-ghost !px-3.5 !py-2"><ShoppingBag size={18} />{count > 0 && <span className="absolute -top-2 -right-2 bg-gradient-to-r from-indigo-600 to-fuchsia-600 text-white text-[11px] font-bold rounded-full min-w-[20px] h-5 grid place-items-center px-1">{count}</span>}</Link>
-          {user ? (<><span className="flex items-center gap-1.5 font-semibold text-slate-700 bg-slate-100 px-3 py-2 rounded-xl"><UIcon size={15} />{user.name}</span><button onClick={logout} className="flex items-center gap-1 text-red-600 font-semibold hover:bg-red-50 px-3 py-2 rounded-xl"><LogOut size={15} /></button></>) : (<><Link href="/login" className="btn-ghost !py-2">Login</Link><Link href="/register" className="btn-primary !py-2">Register</Link></>)}
-        </div>
-        <button className="md:hidden p-2 border rounded-xl" onClick={() => setOpen(!open)}>{open ? <X /> : <Menu />}</button>
-      </div>
-      {open && (
-        <div className="md:hidden px-4 pb-4 flex flex-col gap-1 text-sm font-semibold bg-white border-t">
-          <Link className="py-2" href="/">Home</Link><Link className="py-2" href="/products">Products</Link><Link className="py-2" href="/cart">Cart ({count})</Link><Link className="py-2" href="/orders">My Orders</Link>
-          {user?.role === 'ADMIN' && <Link className="py-2 text-indigo-700" href="/admin">Admin</Link>}
-          {user ? <button onClick={logout} className="text-left text-red-600 py-2">Logout ({user.name})</button> : (<><Link className="py-2" href="/login">Login</Link><Link className="py-2" href="/register">Register</Link></>)}
+      </header>
+
+      {/* Overlays are siblings of <header>: backdrop-filter would otherwise trap `position: fixed` children. */}
+      {searching && (
+        <>
+          <div onClick={closeSearch} className="fixed inset-0 top-11 z-[54] animate-fade-in bg-black/20" aria-hidden />
+          <SearchPanel onClose={closeSearch} />
+        </>
+      )}
+
+      {menu && (
+        <div id="mobile-menu" className="fixed inset-x-0 bottom-0 top-11 z-[55] animate-fade-in overflow-y-auto bg-white px-4 pb-8 pt-2 md:hidden">
+          <ul>
+            {links.map((l) => (
+              <li key={l.href} className="border-b border-line">
+                <Link href={l.href} className="block py-3 text-base font-medium">
+                  {l.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-5">
+            {user ? (
+              <>
+                <p className="text-xs text-mute">Signed in as</p>
+                <p className="text-sm font-medium">{user.name}</p>
+                <button onClick={logout} className="btn-secondary mt-3">
+                  Sign out
+                </button>
+              </>
+            ) : (
+              <div className="flex items-center gap-4">
+                <Link href="/login" className="btn-primary">
+                  Sign in
+                </Link>
+                <Link href="/register" className="link link-more text-[13px]">
+                  Create account
+                </Link>
+              </div>
+            )}
+          </div>
         </div>
       )}
-    </header>
+
+      {/* Promotional strip below the nav (kept from the original banner copy) */}
+      <div className="border-b border-line bg-canvas px-4 py-1.5 text-center text-[11px] text-mute">
+        Aman Chaudhary Free delivery on orders over $50 — Cash on Delivery available
+        <Link href="/products" className="link link-more ml-2 font-medium">
+          Shop now
+        </Link>
+      </div>
+    </>
   );
 }
