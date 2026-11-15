@@ -15,7 +15,9 @@ const productSchema = z.object({
 export async function listProducts(req: Request, res: Response) {
   const { search = '', category = '', sort = '', } = req.query as Record<string, string>;
   const filter: Record<string, unknown> = { isActive: true };
-  if (search) filter.name = { $regex: search, $options: 'i' };
+  // Escape regex metacharacters: raw user input in $regex would throw on "(" and could be
+  // abused with catastrophic patterns (ReDoS). Cap the length too.
+  if (search) filter.name = { $regex: search.slice(0, 60).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' };
   if (category) filter.category = category;
   let query = Product.find(filter);
   if (sort === 'price-asc') query = query.sort({ price: 1 });
