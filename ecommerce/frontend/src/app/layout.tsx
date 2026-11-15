@@ -1,40 +1,44 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter } from 'next/font/google';
+import { Inter_Tight, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
-import Header from '../components/Header';
-import Footer from '../components/Footer';
+import SiteChrome from '../components/SiteChrome';
+import SmoothScroll from '../components/SmoothScroll';
 import { AuthProvider } from '../context/AuthContext';
 import { CartProvider } from '../context/CartContext';
+import { THEME_INIT_SCRIPT, ThemeProvider } from '../context/ThemeContext';
 
-// Fallback for non-Apple devices; Apple devices use the system font via the font stack.
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
+/**
+ * Typography: a tight neo-grotesk for display/UI and a monospace for body copy, buttons and labels.
+ * (Both are free Google fonts chosen to match the look of the reference site's Untitled Sans + a mono.)
+ */
+const sans = Inter_Tight({ subsets: ['latin'], variable: '--font-sans', display: 'swap', weight: ['400', '500', '600'] });
+const mono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono', display: 'swap', weight: ['400', '500'] });
 
 export const metadata: Metadata = {
-  title: { default: 'ShopEasy: Shop what you love', template: '%s | ShopEasy' },
-  description: 'Beautifully made products at fair prices, with cash on delivery.',
+  title: { default: 'ShopEasy: Everyday objects, delivered', template: '%s | ShopEasy' },
+  description: 'A considered catalogue of everyday objects at fair prices. Pay in cash when it arrives.',
 };
 
-export const viewport: Viewport = { width: 'device-width', initialScale: 1, themeColor: '#ffffff' };
+export const viewport: Viewport = { width: 'device-width', initialScale: 1, themeColor: '#121314' };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={inter.variable}>
-      <body className="flex min-h-screen flex-col bg-white font-sans text-ink antialiased">
-        <a
-          href="#main"
-          className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[100] focus:rounded-md focus:bg-white focus:px-3 focus:py-1.5 focus:text-sm focus:shadow-lg"
-        >
+    <html lang="en" data-theme="dark" className={`${sans.variable} ${mono.variable}`} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
+      <body className="flex min-h-screen flex-col">
+        <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-full focus:bg-accent focus:px-5 focus:py-2 focus:font-mono focus:text-sm focus:text-onaccent">
           Skip to content
         </a>
-        <AuthProvider>
-          <CartProvider>
-            <Header />
-            <main id="main" className="flex-1">
-              {children}
-            </main>
-            <Footer />
-          </CartProvider>
-        </AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <CartProvider>
+              <SmoothScroll />
+              <SiteChrome>{children}</SiteChrome>
+            </CartProvider>
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

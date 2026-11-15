@@ -9,6 +9,7 @@ import pinoHttp from 'pino-http';
 import authRoutes from './routes/authRoutes';
 import productRoutes from './routes/productRoutes';
 import orderRoutes from './routes/orderRoutes';
+import adminRoutes from './routes/adminRoutes';
 import { errorHandler, notFound } from './middleware/errorHandler';
 import { authLimiter, globalLimiter } from './middleware/rateLimit';
 import { isOriginAllowed, isProd, isTest } from './config/env';
@@ -67,6 +68,7 @@ app.use(cookieParser());
 app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api', adminRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

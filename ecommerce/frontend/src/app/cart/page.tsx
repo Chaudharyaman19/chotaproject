@@ -1,75 +1,98 @@
 'use client';
 import Link from 'next/link';
+import { ArrowRight } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { formatPrice } from '../../lib/format';
 import QtyStepper from '../../components/QtyStepper';
+import PageHero from '../../components/PageHero';
+import { isPhoto } from '../../components/ProductCard';
+import { X } from '../../components/ui/Primitives';
+
+const FREE_FROM = 50;
+const FEE = 4.99;
 
 export default function CartPage() {
   const { items, updateQty, remove, subtotal, count } = useCart();
 
   if (items.length === 0)
     return (
-      <div className="wrap-sm py-16 text-center">
-        <h1 className="h-page">Your bag is empty</h1>
-        <p className="mt-1 text-[13px] text-mute">Items you add will show up here.</p>
-        <Link href="/products" className="btn-primary mt-5">
-          Continue shopping
+      <div className="wrap-sm flex min-h-[80vh] flex-col items-center justify-center py-32 text-center">
+        <p className="eyebrow">Your bag</p>
+        <h1 className="h2 mt-4">It’s empty</h1>
+        <p className="mono mt-4">Items you add will show up here.</p>
+        <Link href="/products" className="pill-accent pill pill-lg mt-8">
+          Start shopping <ArrowRight size={16} />
         </Link>
       </div>
     );
 
-  const delivery = subtotal > 50 ? 0 : 4.99;
+  const delivery = subtotal > FREE_FROM ? 0 : FEE;
+  const toFree = Math.max(0, FREE_FROM - subtotal);
 
   return (
-    <div className="wrap py-5">
-      <h1 className="h-page">
-        Your bag <span className="font-normal text-mute">· {count} {count === 1 ? 'item' : 'items'}</span>
-      </h1>
-
-      <div className="mt-4 grid gap-6 lg:grid-cols-[1fr_320px]">
-        <ul className="divide-y divide-line border-y border-line">
-          {items.map((i) => (
-            <li key={i.product._id} className="flex items-center gap-3 py-3">
-              <Link href={`/products/${i.product._id}`} className="shrink-0">
-                <img src={i.product.image} alt={i.product.name} className="h-14 w-14 rounded-md border border-line bg-canvas object-cover" />
-              </Link>
-              <div className="min-w-0 flex-1">
-                <Link href={`/products/${i.product._id}`} className="block truncate text-[13px] font-medium hover:underline">
-                  {i.product.name}
+    <>
+      <PageHero eyebrow={`${count} ${count === 1 ? 'item' : 'items'}`} title="Your bag" />
+      <div className="wrap pb-24 pt-10">
+        <div className="frame relative grid border-y border-dotted border-fg/50 lg:grid-cols-[1fr_400px]">
+          <X at="tl" />
+          <X at="tr" />
+          <X at="bl" />
+          <X at="br" />
+          <ul className="divide-y divide-dotted divide-fg/50 lg:border-r lg:border-dotted lg:border-fg/50">
+            {items.map((i) => (
+              <li key={i.product._id} className="grid grid-cols-[88px_1fr] items-center gap-x-5 gap-y-3 p-5 sm:grid-cols-[112px_1fr_auto] md:p-8">
+                <Link href={`/products/${i.product._id}`} className="shot block aspect-square overflow-hidden">
+                  <img src={i.product.image} alt={i.product.name} className={`h-full w-full ${isPhoto(i.product.image) ? 'object-cover' : 'object-contain p-2'}`} />
                 </Link>
-                <p className="text-xs text-mute">{formatPrice(i.product.price)} each</p>
-                <button onClick={() => remove(i.product._id)} className="link mt-0.5 text-xs text-mute">
-                  Remove
-                </button>
-              </div>
-              <QtyStepper value={i.quantity} min={0} max={i.product.stock} onChange={(q) => updateQty(i.product._id, q)} />
-              <span className="w-16 text-right text-[13px] font-medium tabular-nums">{formatPrice(i.product.price * i.quantity)}</span>
-            </li>
-          ))}
-        </ul>
+                <div className="min-w-0">
+                  <p className="eyebrow">{i.product.brand || i.product.category}</p>
+                  <Link href={`/products/${i.product._id}`} className="mt-1 block text-[clamp(1.1rem,2vw,1.5rem)] leading-tight tracking-[-0.015em] text-head hover:text-accentfg">
+                    {i.product.name}
+                  </Link>
+                  <p className="mono mt-1">{formatPrice(i.product.price)} each</p>
+                  <button onClick={() => remove(i.product._id)} className="link mt-2 font-mono text-[12px]">
+                    Remove
+                  </button>
+                </div>
+                <div className="col-span-2 flex items-center justify-between gap-6 sm:col-span-1 sm:flex-col sm:items-end">
+                  <QtyStepper value={i.quantity} min={0} max={i.product.stock} onChange={(q) => updateQty(i.product._id, q)} />
+                  <span className="font-mono text-[15px] text-head">{formatPrice(i.product.price * i.quantity)}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
 
-        <aside className="h-fit rounded-lg border border-line p-4 lg:sticky lg:top-16">
-          <h2 className="h-section">Order summary</h2>
-          <dl className="mt-3 space-y-2 text-[13px]">
-            <div className="flex justify-between">
-              <dt className="text-mute">Subtotal</dt>
-              <dd>{formatPrice(subtotal)}</dd>
+          <aside className="h-fit p-6 md:p-8 lg:sticky lg:top-24">
+            <p className="eyebrow">Order summary</p>
+            <dl className="mt-6 space-y-3 font-mono text-[14px]">
+              <div className="flex justify-between">
+                <dt>Subtotal</dt>
+                <dd className="text-head">{formatPrice(subtotal)}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt>Delivery</dt>
+                <dd className="text-head">{delivery === 0 ? 'Free' : formatPrice(delivery)}</dd>
+              </div>
+              <div className="flex items-baseline justify-between border-t border-dotted border-fg/50 pt-4">
+                <dt className="text-head">Total</dt>
+                <dd className="text-[1.8rem] font-medium tracking-[-0.03em] text-head">{formatPrice(subtotal + delivery)}</dd>
+              </div>
+            </dl>
+
+            <div className="mt-6" aria-live="polite">
+              <p className="font-mono text-[12px]">{toFree > 0 ? `Add ${formatPrice(toFree)} more for free delivery.` : 'You’ve unlocked free delivery.'}</p>
+              <div className="mt-2 h-[3px] w-full bg-fg/20">
+                <div className="h-full bg-accentfg transition-[width] duration-700" style={{ width: `${Math.min(100, (subtotal / FREE_FROM) * 100)}%` }} />
+              </div>
             </div>
-            <div className="flex justify-between">
-              <dt className="text-mute">Delivery</dt>
-              <dd>{delivery === 0 ? 'Free' : formatPrice(delivery)}</dd>
-            </div>
-            <div className="flex justify-between border-t border-line pt-2 text-sm font-semibold">
-              <dt>Total</dt>
-              <dd>{formatPrice(subtotal + delivery)}</dd>
-            </div>
-          </dl>
-          <Link href="/checkout" className="btn-primary mt-4 w-full">
-            Check out
-          </Link>
-          <p className="mt-2 text-center text-[11px] text-mute">Pay in cash when your order arrives.</p>
-        </aside>
+
+            <Link href="/checkout" className="pill-accent pill pill-lg mt-8 w-full">
+              Check out <ArrowRight size={16} />
+            </Link>
+            <p className="mono mt-4 text-center text-[11px]">Pay in cash when your order arrives.</p>
+          </aside>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

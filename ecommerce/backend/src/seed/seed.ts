@@ -4,6 +4,8 @@ import bcrypt from 'bcryptjs';
 import { connectDB } from '../config/db';
 import { User } from '../models/User';
 import { Product } from '../models/Product';
+import { Order } from '../models/Order';
+import catalog from './catalog.json';
 
 const IMG = (id: string) => `https://images.unsplash.com/${id}?w=600&q=80&auto=format&fit=crop`;
 const products = [
@@ -29,6 +31,30 @@ const products = [
   { name: 'Keyboard', description: 'Mechanical keyboard', price: 74.99, image: IMG('photo-1587829741301-dc798b83add3'), category: 'Electronics', stock: 30 },
 ];
 
+/** ~45 backdated orders over the last 30 days so the admin charts have something to show. */
+async function seedDemoOrders() {
+  if (await Order.countDocuments({ orderNumber: /^DEMO-/ })) return console.log('Demo orders already present, skipping');
+  const customers = await User.find({ role: 'CUSTOMER' }).limit(10);
+  const prods = await Product.find({ isActive: true, stock: { $gt: 5 } }).limit(60);
+  if (!customers.length || !prods.length) return;
+  const statuses = ['DELIVERED', 'DELIVERED', 'DELIVERED', 'SHIPPED', 'CONFIRMED', 'PENDING', 'CANCELLED'] as const;
+  const docs = Array.from({ length: 45 }, (_, i) => {
+    const c = customers[i % customers.length];
+    const lines = Array.from({ length: 1 + (i % 3) }, (_, k) => prods[(i * 7 + k * 3) % prods.length]);
+    const items = lines.map((p, k) => ({ product: p._id, name: p.name, price: p.price, quantity: 1 + ((i + k) % 2) }));
+    const subtotal = Math.round(items.reduce((s, it) => s + it.price * it.quantity, 0) * 100) / 100;
+    const when = new Date(Date.now() - ((i * 17) % 30) * 86400000 - (i % 9) * 3600000);
+    return {
+      orderNumber: `DEMO-${String(i + 1).padStart(4, '0')}`, user: c._id, items,
+      customerName: c.name, phone: '0300 1234567', shippingAddress: `${10 + i} Demo Street, Lahore`,
+      subtotal, total: subtotal, paymentMethod: 'COD', paymentStatus: 'UNPAID',
+      status: statuses[i % statuses.length], createdAt: when, updatedAt: when,
+    };
+  });
+  await Order.collection.insertMany(docs); // raw insert: keeps the backdated timestamps
+  console.log(`Demo orders created: ${docs.length}`);
+}
+
 async function main() {
   await connectDB(process.env.MONGODB_URI || '');
   const adminEmail = (process.env.ADMIN_EMAIL || 'admin@example.com').toLowerCase();
@@ -43,10 +69,15 @@ async function main() {
       await User.create({ name, email, passwordHash: await bcrypt.hash('Customer123!', 10), role: 'CUSTOMER' });
     }
   }
-  for (const p of products) {
+  // Additive on purpose: $setOnInsert never overwrites a product an admin already edited,
+  // so re-running the seed on a live database is safe.
+  for (const p of [...products, ...(catalog as Record<string, unknown>[])] as Array<{ name: string }>) {
     await Product.updateOne({ name: p.name }, { $setOnInsert: { ...p, isActive: true } }, { upsert: true });
   }
-  console.log('Seed done: 20 products, users ready');
+  console.log(`Seed done: ${await Product.countDocuments()} products in catalogue, users ready`);
+
+  // Opt-in demo history for dashboards/screenshots: `npm run seed -- --demo-orders`. Never run by default.
+  if (process.argv.includes('--demo-orders')) await seedDemoOrders();
   process.exit(0);
 }
 main().catch((e) => { console.error(e); process.exit(1); });

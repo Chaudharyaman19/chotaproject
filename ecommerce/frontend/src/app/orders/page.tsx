@@ -8,17 +8,20 @@ import { useAuth } from '../../context/AuthContext';
 import StatusPill from '../../components/StatusPill';
 import SignInPrompt from '../../components/SignInPrompt';
 import Loading from '../../components/Loading';
+import PageHero from '../../components/PageHero';
+import { X } from '../../components/ui/Primitives';
 
 export default function OrdersPage() {
   const { user, loading: authLoading } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState('');
 
   const load = () =>
     api
       .get('/orders/my')
       .then((d) => setOrders(d.orders ?? []))
-      .catch(() => {})
+      .catch((e) => setErr(e instanceof Error ? e.message : 'Could not load orders'))
       .finally(() => setLoading(false));
 
   useEffect(() => {
@@ -31,58 +34,70 @@ export default function OrdersPage() {
 
   const cancel = async (id: string) => {
     if (!confirm('Cancel this order?')) return;
-    await api.patch(`/orders/${id}/cancel`, {});
-    load();
+    try {
+      await api.patch(`/orders/${id}/cancel`, {});
+      load();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Could not cancel');
+    }
   };
 
   return (
-    <div className="wrap py-5">
-      <h1 className="h-page">Your orders</h1>
-
-      {orders.length === 0 ? (
-        <div className="py-16 text-center">
-          <p className="text-sm font-medium">No orders yet.</p>
-          <p className="mt-1 text-xs text-mute">When you place an order, you’ll find it here.</p>
-          <Link href="/products" className="btn-primary mt-4">
-            Start shopping
-          </Link>
-        </div>
-      ) : (
-        <ul className="mt-4 space-y-3">
-          {orders.map((o) => (
-            <li key={o._id} className="animate-fade-up rounded-lg border border-line p-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-[13px]">
-                  <span className="font-semibold">Order #{o.orderNumber}</span> <span className="text-mute">· {formatDate(o.createdAt)}</span>
-                </p>
-                <StatusPill status={o.status} />
-              </div>
-
-              <ul className="mt-2 divide-y divide-line border-t border-line text-[13px]">
-                {o.items.map((it, i) => (
-                  <li key={i} className="flex justify-between gap-4 py-1.5">
-                    <span>
-                      {it.name} <span className="text-mute">× {it.quantity}</span>
-                    </span>
-                    <span className="tabular-nums">{formatPrice(it.price * it.quantity)}</span>
-                  </li>
-                ))}
-              </ul>
-
-              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-2">
-                <p className="text-xs text-mute">Cash on delivery · {o.paymentStatus.toLowerCase()}</p>
-                <p className="text-sm font-semibold">{formatPrice(o.total)}</p>
-              </div>
-
-              {(o.status === 'PENDING' || o.status === 'CONFIRMED') && (
-                <button onClick={() => cancel(o._id)} className="link mt-1 text-xs text-mute">
-                  Cancel order
-                </button>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
+    <>
+      <PageHero eyebrow={`${orders.length} ${orders.length === 1 ? 'order' : 'orders'}`} title="Your orders" />
+      <div className="wrap pb-24 pt-10">
+        {err && (
+          <p role="alert" className="mb-6 border border-danger/60 px-3 py-2 font-mono text-[12px] text-danger">
+            {err}
+          </p>
+        )}
+        {orders.length === 0 ? (
+          <div className="py-20 text-center">
+            <p className="h3">No orders yet.</p>
+            <p className="mono mt-2">When you place an order, you’ll find it here.</p>
+            <Link href="/products" className="pill-accent pill pill-lg mt-8">
+              Start shopping
+            </Link>
+          </div>
+        ) : (
+          <ul className="space-y-6">
+            {orders.map((o) => (
+              <li key={o._id} className="relative animate-fade-up border border-dotted border-fg/50">
+                <X at="tl" />
+                <X at="tr" />
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-dotted border-fg/50 p-5 md:px-8">
+                  <div>
+                    <p className="text-[1.4rem] font-medium uppercase leading-none tracking-[-0.03em] text-head">#{o.orderNumber}</p>
+                    <p className="mono mt-1.5">Placed {formatDate(o.createdAt)}</p>
+                  </div>
+                  <StatusPill status={o.status} />
+                </div>
+                <ul className="divide-y divide-dotted divide-fg/40 px-5 md:px-8">
+                  {o.items.map((it, i) => (
+                    <li key={i} className="flex justify-between gap-4 py-3 text-[15px]">
+                      <span className="text-head">
+                        {it.name} <span className="mono">× {it.quantity}</span>
+                      </span>
+                      <span className="font-mono text-[13px] text-head">{formatPrice(it.price * it.quantity)}</span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-dotted border-fg/50 p-5 md:px-8">
+                  <p className="mono">Cash on delivery · {o.paymentStatus.toLowerCase()}</p>
+                  <div className="flex items-center gap-5">
+                    {(o.status === 'PENDING' || o.status === 'CONFIRMED') && (
+                      <button onClick={() => cancel(o._id)} className="link font-mono text-[12px]">
+                        Cancel order
+                      </button>
+                    )}
+                    <p className="text-[1.4rem] font-medium tracking-[-0.03em] text-head">{formatPrice(o.total)}</p>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </>
   );
 }

@@ -18,6 +18,7 @@ export interface IOrder extends Document {
   phone: string;
   shippingAddress: string;
   subtotal: number;
+  shippingFee: number;
   total: number;
   paymentMethod: 'COD';
   paymentStatus: PaymentStatus;
@@ -43,6 +44,7 @@ const orderSchema = new mongoose.Schema<IOrder>(
     phone: { type: String, required: true, trim: true },
     shippingAddress: { type: String, required: true, trim: true },
     subtotal: { type: Number, required: true, min: 0 },
+    shippingFee: { type: Number, min: 0, default: 0 },
     total: { type: Number, required: true, min: 0 },
     paymentMethod: { type: String, enum: ['COD'], default: 'COD' },
     paymentStatus: { type: String, enum: ['UNPAID', 'PENDING'], default: 'UNPAID' },

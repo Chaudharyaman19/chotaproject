@@ -1,15 +1,16 @@
 const styles: Record<string, string> = {
-  PENDING: 'bg-[#fff4e5] text-[#b25000]',
-  CONFIRMED: 'bg-[#e8f2ff] text-[#0b5cb8]',
-  SHIPPED: 'bg-[#eeeaff] text-[#5b3fd0]',
-  DELIVERED: 'bg-[#e6f6ea] text-[#1d7a36]',
-  CANCELLED: 'bg-black/5 text-mute',
+  PENDING: 'border-warn/60 text-warn',
+  CONFIRMED: 'border-[#6fb4ff]/60 text-[#6fb4ff]',
+  SHIPPED: 'border-accentfg/70 text-accentfg',
+  DELIVERED: 'border-ok/70 text-ok',
+  CANCELLED: 'border-fg/40 text-fg/70',
 };
 
 export default function StatusPill({ status }: { status: string }) {
   return (
-    <span className={`inline-flex items-center rounded px-2 py-0.5 text-[11px] font-medium ${styles[status] ?? 'bg-black/5 text-mute'}`}>
-      {status.charAt(0) + status.slice(1).toLowerCase()}
+    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 font-mono text-[11px] uppercase tracking-[0.08em] ${styles[status] ?? 'border-fg/40 text-fg'}`}>
+      <span className="h-1.5 w-1.5 rounded-full bg-current" />
+      {status.toLowerCase()}
     </span>
   );
 }

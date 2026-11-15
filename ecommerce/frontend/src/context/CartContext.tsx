@@ -11,10 +11,13 @@ const C = createContext<Ctx>({ items: [], add: () => {}, updateQty: () => {}, re
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
+  const [ready, setReady] = useState(false);
   useEffect(() => {
     try { setItems(JSON.parse(localStorage.getItem('cart') || '[]')); } catch {}
+    setReady(true);
   }, []);
-  useEffect(() => { localStorage.setItem('cart', JSON.stringify(items)); }, [items]);
+  // Only persist after the saved cart was loaded, otherwise the first render's empty [] would wipe it.
+  useEffect(() => { if (ready) localStorage.setItem('cart', JSON.stringify(items)); }, [items, ready]);
   useEffect(() => {
     const sync = () => { try { setItems(JSON.parse(localStorage.getItem('cart') || '[]')); } catch {} };
     window.addEventListener('auth-change', sync);

@@ -11,6 +11,10 @@ const checkoutSchema = z.object({
   items: z.array(z.object({ productId: z.string(), quantity: z.number().int().min(1).max(20) })).min(1),
 });
 
+/** Keep in sync with the storefront (cart + checkout): free delivery above the threshold, flat fee below. */
+export const FREE_SHIPPING_ABOVE = 50;
+export const SHIPPING_FEE = 4.99;
+
 function orderNumber() {
   return `ORD-${Date.now().toString().slice(-8)}-${Math.floor(1000 + Math.random() * 9000)}`;
 }
@@ -28,6 +32,7 @@ export async function createOrder(req: AuthRequest, res: Response) {
     p.stock -= it.quantity;
     await p.save();
   }
+  const shippingFee = subtotal > FREE_SHIPPING_ABOVE ? 0 : SHIPPING_FEE;
   const order = await Order.create({
     orderNumber: orderNumber(),
     user: req.user!.id,
@@ -36,7 +41,8 @@ export async function createOrder(req: AuthRequest, res: Response) {
     phone: data.phone,
     shippingAddress: data.shippingAddress,
     subtotal,
-    total: subtotal,
+    shippingFee,
+    total: Math.round((subtotal + shippingFee) * 100) / 100,
     paymentMethod: 'COD',
     paymentStatus: 'UNPAID',
     status: 'PENDING',

@@ -1,186 +1,210 @@
 'use client';
-import { useEffect, useState } from 'react';
-import { Pencil, Trash2 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { api } from '../../lib/api';
-import { formatPrice } from '../../lib/format';
+import { formatDateTime, formatMoney0, formatPrice } from '../../lib/format';
 import { Order, Product } from '../../types';
-import { useAuth } from '../../context/AuthContext';
-import { Field } from '../../components/Field';
 import StatusPill from '../../components/StatusPill';
-import SignInPrompt from '../../components/SignInPrompt';
-import Loading from '../../components/Loading';
+import { BarChart, Kpi, PageTitle, Panel, th, td } from '../../components/admin/ui';
+import { ErrorState } from '../../components/Loading';
 
-const empty = { name: '', description: '', price: 0, image: '', category: '', stock: 0, isActive: true };
-const STATUSES = ['PENDING', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
+const RANGES = [7, 14, 30] as const;
+const dayKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const STATUS_ORDER = ['PENDING', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED'] as const;
+const STATUS_COLOR: Record<string, string> = { PENDING: '#e9b44c', CONFIRMED: '#6fb4ff', SHIPPED: '#d591fe', DELIVERED: '#47d1b5', CANCELLED: '#6b7280' };
+const userName = (o: Order) => (typeof o.user === 'object' && o.user?.name) || o.customerName;
 
-export default function Admin() {
-  const { user, loading: authLoading } = useAuth();
+export default function Overview() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
-  const [rev, setRev] = useState(0);
-  const [total, setTotal] = useState(0);
-  const [form, setForm] = useState(empty);
-  const [editId, setEditId] = useState('');
-  const [msg, setMsg] = useState('');
+  const [range, setRange] = useState<(typeof RANGES)[number]>(14);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState('');
 
-  const load = async () => {
-    const o = await api.get('/orders');
-    setOrders(o.orders || []);
-    setRev(o.totalRevenue || 0);
-    setTotal(o.totalOrders || o.orders?.length || 0);
-    const p = await api.get('/products/admin/all');
-    setProducts(p.products || []);
+  const load = () => {
+    setLoading(true);
+    setErr('');
+    Promise.all([api.get('/orders'), api.get('/products/admin/all')])
+      .then(([o, p]) => {
+        setOrders(o.orders ?? []);
+        setProducts(p.products ?? []);
+      })
+      .catch((e) => setErr(e instanceof Error ? e.message : 'Could not load dashboard'))
+      .finally(() => setLoading(false));
   };
+  useEffect(load, []);
 
-  useEffect(() => {
-    if (user?.role === 'ADMIN') load().catch((e) => setMsg(e.message));
-  }, [user]);
+  const s = useMemo(() => {
+    const live = orders.filter((o) => o.status !== 'CANCELLED');
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (range - 1));
+    const prevStart = new Date(start.getTime() - range * 86400000);
+    const inRange = (o: Order, a: Date, b: Date) => {
+      const t = new Date(o.createdAt);
+      return t >= a && t < b;
+    };
+    const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const cur = live.filter((o) => inRange(o, start, end));
+    const prev = live.filter((o) => inRange(o, prevStart, start));
+    const sum = (a: Order[]) => a.reduce((t, o) => t + o.total, 0);
+    const revenue = sum(cur);
+    const pct = (a: number, b: number) => (b === 0 ? (a > 0 ? 100 : 0) : Math.round(((a - b) / b) * 100));
 
-  if (authLoading) return <Loading />;
-  if (!user) return <SignInPrompt message="Sign in with an admin account to continue." />;
-  if (user.role !== 'ADMIN')
-    return (
-      <div className="wrap-sm py-16 text-center">
-        <h1 className="h-page">Admins only</h1>
-        <p className="mt-1 text-[13px] text-mute">Your account doesn’t have access to this page.</p>
-      </div>
-    );
+    const byDay = new Map<string, number>();
+    for (let i = 0; i < range; i++) byDay.set(dayKey(new Date(start.getTime() + i * 86400000)), 0);
+    for (const o of cur) byDay.set(dayKey(new Date(o.createdAt)), (byDay.get(dayKey(new Date(o.createdAt))) ?? 0) + o.total);
+    const series = Array.from(byDay.entries()).map(([k, value]) => ({ label: new Date(k + 'T00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), value }));
 
-  const save = async () => {
-    try {
-      setMsg('');
-      const body = { ...form, price: Number(form.price), stock: Number(form.stock) };
-      if (editId) await api.put(`/products/${editId}`, body);
-      else await api.post('/products', body);
-      setForm(empty);
-      setEditId('');
-      setMsg('Saved.');
-      load();
-    } catch (e: unknown) {
-      setMsg(e instanceof Error ? e.message : 'Something went wrong');
+    const units = new Map<string, { name: string; qty: number; revenue: number }>();
+    for (const o of live) for (const it of o.items) {
+      const e = units.get(it.name) ?? { name: it.name, qty: 0, revenue: 0 };
+      e.qty += it.quantity;
+      e.revenue += it.price * it.quantity;
+      units.set(it.name, e);
     }
-  };
-  const del = async (id: string) => {
-    if (!confirm('Delete this product?')) return;
-    await api.del(`/products/${id}`);
-    load();
-  };
-  const status = async (id: string, s: string) => {
-    await api.patch(`/orders/${id}/status`, { status: s });
-    load();
-  };
+    const top = Array.from(units.values()).sort((a, b) => b.qty - a.qty).slice(0, 6);
+    const counts = Object.fromEntries(STATUS_ORDER.map((k) => [k, orders.filter((o) => o.status === k).length]));
+    const active = products.filter((p) => p.isActive !== false);
+    return {
+      revenue, revDelta: pct(revenue, sum(prev)), orderCount: cur.length, ordDelta: pct(cur.length, prev.length),
+      aov: cur.length ? revenue / cur.length : 0, series, top, counts, pending: counts.PENDING ?? 0,
+      activeCount: active.length, hidden: products.length - active.length,
+      low: active.filter((p) => p.stock > 0 && p.stock <= 5).sort((a, b) => a.stock - b.stock),
+      out: active.filter((p) => p.stock === 0),
+    };
+  }, [orders, products, range]);
 
-  const stats = [
-    { label: 'Orders', value: String(total) },
-    { label: 'Revenue (excl. cancelled)', value: formatPrice(rev) },
-    { label: 'Products', value: String(products.length) },
-  ];
+  if (err) return <ErrorState message={err} onRetry={load} />;
+  const delta = (n: number) => (n === 0 ? 'no change' : `${n > 0 ? '▲' : '▼'} ${Math.abs(n)}% vs previous ${range}d`);
 
   return (
-    <div className="wrap space-y-4 py-5">
-      <h1 className="h-page">Admin dashboard</h1>
-
-      {msg && (
-        <p role="status" className="rounded-md border border-line bg-canvas px-3 py-2 text-xs font-medium">
-          {msg}
-        </p>
-      )}
-
-      <div className="grid grid-cols-3 gap-3">
-        {stats.map(({ label, value }) => (
-          <div key={label} className="rounded-lg border border-line p-3">
-            <p className="text-lg font-semibold leading-none tracking-tight">{value}</p>
-            <p className="mt-1.5 text-[11px] text-mute">{label}</p>
-          </div>
-        ))}
-      </div>
-
-      <section className="rounded-lg border border-line p-4">
-        <h2 className="h-section">{editId ? 'Edit product' : 'Add a product'}</h2>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2 md:grid-cols-3">
-          <Field id="p-name" label="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-          <Field id="p-cat" label="Category" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} />
-          <Field id="p-img" label="Image URL" value={form.image} onChange={(e) => setForm({ ...form, image: e.target.value })} />
-          <Field id="p-price" label="Price" type="number" min={0} step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: Number(e.target.value) })} />
-          <Field id="p-stock" label="Stock" type="number" min={0} value={form.stock} onChange={(e) => setForm({ ...form, stock: Number(e.target.value) })} />
-          <Field id="p-desc" label="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
-        </div>
-        <div className="mt-3 flex gap-2">
-          <button onClick={save} className="btn-primary btn-sm">
-            {editId ? 'Update product' : 'Add product'}
-          </button>
-          {editId && (
-            <button
-              onClick={() => {
-                setForm(empty);
-                setEditId('');
-              }}
-              className="btn-gray btn-sm"
-            >
-              Cancel
+    <>
+      <PageTitle eyebrow="Dashboard" title="Overview">
+        <div role="group" aria-label="Date range" className="flex">
+          {RANGES.map((r) => (
+            <button key={r} onClick={() => setRange(r)} aria-pressed={range === r} className={`h-9 border border-fg/50 px-4 font-mono text-[12px] first:rounded-l-full last:rounded-r-full ${range === r ? 'bg-accent text-onaccent' : 'text-head hover:bg-fg/10'}`}>
+              {r}d
             </button>
-          )}
-        </div>
-
-        <ul className="mt-4 max-h-80 divide-y divide-line overflow-auto border-t border-line text-[13px]">
-          {products.map((p) => (
-            <li key={p._id} className="flex items-center justify-between gap-3 py-2">
-              <span className="flex min-w-0 items-center gap-2.5">
-                <img src={p.image} alt="" className="h-8 w-8 shrink-0 rounded-md border border-line bg-canvas object-cover" />
-                <span className="min-w-0">
-                  <span className="block truncate font-medium">{p.name}</span>
-                  <span className="text-[11px] text-mute">
-                    {formatPrice(p.price)} · {p.stock} in stock{p.isActive === false ? ' · hidden' : ''}
-                  </span>
-                </span>
-              </span>
-              <span className="flex shrink-0 gap-3 text-xs">
-                <button
-                  onClick={() => {
-                    setForm({ name: p.name, description: p.description, price: p.price, image: p.image, category: p.category, stock: p.stock, isActive: true });
-                    setEditId(p._id);
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }}
-                  className="link inline-flex items-center gap-1"
-                >
-                  <Pencil size={12} /> Edit
-                </button>
-                <button onClick={() => del(p._id)} className="inline-flex items-center gap-1 text-[#c4271b] hover:underline">
-                  <Trash2 size={12} /> Delete
-                </button>
-              </span>
-            </li>
           ))}
-        </ul>
-      </section>
+        </div>
+      </PageTitle>
 
-      <section className="rounded-lg border border-line p-4">
-        <h2 className="h-section">All orders</h2>
-        {orders.length === 0 ? (
-          <p className="mt-2 text-xs text-mute">No orders yet.</p>
-        ) : (
-          <ul className="mt-2 divide-y divide-line text-[13px]">
-            {orders.map((o) => (
-              <li key={o._id} className="flex flex-wrap items-center justify-between gap-2 py-2">
-                <span className="min-w-0">
-                  <span className="font-semibold">#{o.orderNumber}</span> <span className="text-mute">· {o.customerName} · </span>
-                  <span className="font-medium">{formatPrice(o.total)}</span>
-                </span>
-                <span className="flex items-center gap-2">
-                  <StatusPill status={o.status} />
-                  <select value={o.status} onChange={(e) => status(o._id, e.target.value)} aria-label={`Status for order ${o.orderNumber}`} className="select">
-                    {STATUSES.map((s) => (
-                      <option key={s} value={s}>
-                        {s.charAt(0) + s.slice(1).toLowerCase()}
-                      </option>
-                    ))}
-                  </select>
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-    </div>
+      {loading ? (
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="skeleton h-[118px]" />
+          ))}
+        </div>
+      ) : (
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <Kpi label={`Revenue · ${range}d`} value={formatMoney0(s.revenue)} sub={delta(s.revDelta)} tone={s.revDelta >= 0 ? 'ok' : 'warn'} />
+            <Kpi label={`Orders · ${range}d`} value={s.orderCount} sub={delta(s.ordDelta)} tone={s.ordDelta >= 0 ? 'ok' : 'warn'} />
+            <Kpi label="Avg. order value" value={formatPrice(s.aov)} sub="excl. cancelled" />
+            <Kpi label="Needs action" value={s.pending} sub={s.pending ? 'pending orders to confirm' : 'all caught up'} tone={s.pending ? 'warn' : 'ok'} />
+            <Kpi label="Products live" value={s.activeCount} sub={`${s.hidden} hidden · ${products.length} total`} />
+            <Kpi label="Stock alerts" value={s.low.length + s.out.length} sub={`${s.low.length} low · ${s.out.length} sold out`} tone={s.low.length + s.out.length ? 'warn' : 'ok'} />
+          </div>
+
+          <div className="mt-4 grid gap-4 xl:grid-cols-[1.6fr_1fr]">
+            <Panel title={`Revenue by day · last ${range} days`}>
+              <BarChart data={s.series} format={formatPrice} />
+            </Panel>
+            <Panel title="Orders by status">
+              <div className="flex h-3 w-full overflow-hidden rounded-full bg-fg/15" role="img" aria-label="Orders by status">
+                {STATUS_ORDER.map((k) => (s.counts[k] ? <div key={k} title={`${k}: ${s.counts[k]}`} style={{ width: `${(s.counts[k] / Math.max(1, orders.length)) * 100}%`, background: STATUS_COLOR[k] }} /> : null))}
+              </div>
+              <ul className="mt-5 space-y-2.5">
+                {STATUS_ORDER.map((k) => (
+                  <li key={k} className="flex items-center justify-between font-mono text-[13px]">
+                    <span className="flex items-center gap-2.5">
+                      <span className="h-2.5 w-2.5 rounded-full" style={{ background: STATUS_COLOR[k] }} />
+                      <span className="capitalize text-head">{k.toLowerCase()}</span>
+                    </span>
+                    <span className="tabular-nums">{s.counts[k]}</span>
+                  </li>
+                ))}
+              </ul>
+              <Link href="/admin/orders" className="pill pill-sm mt-6">
+                Manage orders
+              </Link>
+            </Panel>
+          </div>
+
+          <div className="mt-4 grid gap-4 xl:grid-cols-2">
+            <Panel title="Top products · units sold">
+              {s.top.length === 0 ? (
+                <p className="font-mono text-[12px]">No sales yet.</p>
+              ) : (
+                <ul className="space-y-4">
+                  {s.top.map((t) => (
+                    <li key={t.name}>
+                      <div className="flex items-baseline justify-between gap-3 text-[14px]">
+                        <span className="truncate text-head">{t.name}</span>
+                        <span className="font-mono text-[12px] tabular-nums">{t.qty} sold · {formatPrice(t.revenue)}</span>
+                      </div>
+                      <div className="mt-1.5 h-[3px] bg-fg/15">
+                        <div className="h-full bg-accentfg" style={{ width: `${(t.qty / s.top[0].qty) * 100}%` }} />
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Panel>
+
+            <Panel title="Stock alerts" action={<Link href="/admin/products" className="link font-mono text-[11px]">Manage</Link>}>
+              {s.low.length + s.out.length === 0 ? (
+                <p className="font-mono text-[12px]">Everything is well stocked.</p>
+              ) : (
+                <ul className="space-y-3">
+                  {[...s.out, ...s.low].slice(0, 7).map((p) => (
+                    <li key={p._id} className="flex items-center justify-between gap-3 text-[14px]">
+                      <span className="truncate text-head">{p.name}</span>
+                      <span className={`shrink-0 rounded-full border px-2 py-0.5 font-mono text-[11px] ${p.stock === 0 ? 'border-danger/70 text-danger' : 'border-warn/70 text-warn'}`}>{p.stock === 0 ? 'sold out' : `${p.stock} left`}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Panel>
+          </div>
+
+          <Panel title="Recent orders" className="mt-4" pad={false} action={<Link href="/admin/orders" className="link font-mono text-[11px]">View all</Link>}>
+            <div data-lenis-prevent className="thin-scroll overflow-x-auto">
+              <table className="w-full min-w-[640px] text-[14px]">
+                <thead>
+                  <tr className="border-b border-dotted border-fg/30">
+                    <th className={th}>Order</th>
+                    <th className={th}>Customer</th>
+                    <th className={th}>Date</th>
+                    <th className={th}>Total</th>
+                    <th className={th}>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {orders.slice(0, 6).map((o) => (
+                    <tr key={o._id} className="border-b border-dotted border-fg/20 last:border-0">
+                      <td className={`${td} text-head`}>#{o.orderNumber}</td>
+                      <td className={`${td} text-head`}>{userName(o)}</td>
+                      <td className={`${td} font-mono text-[12px]`}>{formatDateTime(o.createdAt)}</td>
+                      <td className={`${td} font-mono text-[13px] text-head`}>{formatPrice(o.total)}</td>
+                      <td className={td}>
+                        <StatusPill status={o.status} />
+                      </td>
+                    </tr>
+                  ))}
+                  {orders.length === 0 && (
+                    <tr>
+                      <td className={`${td} font-mono text-[12px]`} colSpan={5}>
+                        No orders yet.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Panel>
+        </>
+      )}
+    </>
   );
 }

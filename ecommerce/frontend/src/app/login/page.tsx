@@ -3,7 +3,8 @@ import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../../context/AuthContext';
-import { Field } from '../../components/Field';
+import { Field } from '../../components/ui/Field';
+import AuthShell from '../../components/auth/AuthShell';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -28,29 +29,25 @@ export default function Login() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-[340px] px-4 py-12">
-      <h1 className="h-page text-center">Sign in</h1>
-      <p className="mt-1 text-center text-[13px] text-mute">Welcome back to ShopEasy.</p>
-
-      <form onSubmit={submit} className="mt-6 space-y-3">
+    <AuthShell eyebrow="Welcome back" title="Sign in" blurb="Pick up where you left off: your bag, your orders, your details.">
+      <form onSubmit={submit} className="mt-8 space-y-7 lg:mt-0">
         <Field id="email" label="Email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
         <Field id="password" label="Password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
         {err && (
-          <p role="alert" className="rounded-md bg-[#fff1f0] px-3 py-2 text-xs text-[#c4271b]">
+          <p role="alert" className="border border-danger/60 px-3 py-2 font-mono text-[12px] text-danger">
             {err}
           </p>
         )}
-        <button type="submit" disabled={busy || !email || !password} className="btn-primary !mt-4 w-full">
+        <button type="submit" disabled={busy || !email || !password} className="pill-accent pill pill-lg w-full">
           {busy ? 'Signing in…' : 'Sign in'}
         </button>
       </form>
-
-      <p className="mt-5 text-center text-xs text-mute">
-        Don’t have an account?{' '}
-        <Link href="/register" className="link font-medium">
-          Create one
+      <p className="mono mt-8 text-center">
+        New here?{' '}
+        <Link href="/register" className="link text-head">
+          Create an account
         </Link>
       </p>
-    </div>
+    </AuthShell>
   );
 }

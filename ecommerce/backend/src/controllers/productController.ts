@@ -10,21 +10,48 @@ const productSchema = z.object({
   category: z.string().min(2).max(60),
   stock: z.number().int().min(0),
   isActive: z.boolean().optional(),
+  brand: z.string().max(60).optional(),
+  sku: z.string().max(40).optional(),
+  compareAtPrice: z.number().nonnegative().nullable().optional(),
+  rating: z.number().min(0).max(5).optional(),
+  featured: z.boolean().optional(),
+  tags: z.array(z.string().max(30)).max(12).optional(),
+  images: z.array(z.string().url()).max(10).optional(),
 });
 
+const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const SORTS: Record<string, Record<string, 1 | -1>> = {
+  'price-asc': { price: 1 },
+  'price-desc': { price: -1 },
+  newest: { createdAt: -1 },
+  rating: { rating: -1, createdAt: -1 },
+};
+
 export async function listProducts(req: Request, res: Response) {
-  const { search = '', category = '', sort = '', } = req.query as Record<string, string>;
+  const { search = '', category = '', sort = '', featured = '', inStock = '', minPrice = '', maxPrice = '', limit = '' } = req.query as Record<string, string>;
   const filter: Record<string, unknown> = { isActive: true };
   // Escape regex metacharacters: raw user input in $regex would throw on "(" and could be
   // abused with catastrophic patterns (ReDoS). Cap the length too.
-  if (search) filter.name = { $regex: search.slice(0, 60).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' };
+  if (search) {
+    const rx = { $regex: escapeRegex(search.slice(0, 60)), $options: 'i' };
+    filter.$or = [{ name: rx }, { brand: rx }, { category: rx }, { tags: rx }];
+  }
   if (category) filter.category = category;
-  let query = Product.find(filter);
-  if (sort === 'price-asc') query = query.sort({ price: 1 });
-  if (sort === 'price-desc') query = query.sort({ price: -1 });
-  const products = await query.limit(100);
+  if (featured === 'true') filter.featured = true;
+  if (inStock === 'true') filter.stock = { $gt: 0 };
+  const min = Number(minPrice);
+  const max = Number(maxPrice);
+  if (minPrice !== '' || maxPrice !== '') {
+    filter.price = {
+      ...(Number.isFinite(min) && minPrice !== '' ? { $gte: min } : {}),
+      ...(Number.isFinite(max) && maxPrice !== '' ? { $lte: max } : {}),
+    };
+  }
+  const cap = Math.min(Math.max(parseInt(limit, 10) || 200, 1), 500);
+  const products = await Product.find(filter).sort(SORTS[sort] ?? { featured: -1, createdAt: -1 }).limit(cap);
   const categories = await Product.distinct('category', { isActive: true });
-  res.json({ products, categories });
+  res.json({ products, categories: categories.sort(), total: products.length });
 }
 
 export async function getProduct(req: Request, res: Response) {
@@ -46,6 +73,7 @@ export async function updateProduct(req: Request, res: Response) {
   res.json(p);
 }
 
+/** Soft delete: order history keeps referencing the product, it just disappears from the shop. */
 export async function deleteProduct(req: Request, res: Response) {
   const p = await Product.findByIdAndUpdate(req.params.id, { isActive: false }, { new: true });
   if (!p) return res.status(404).json({ message: 'Product not found' });
@@ -53,6 +81,6 @@ export async function deleteProduct(req: Request, res: Response) {
 }
 
 export async function adminListProducts(_req: Request, res: Response) {
-  const products = await Product.find().sort({ createdAt: -1 }).limit(200);
+  const products = await Product.find().sort({ createdAt: -1 }).limit(1000);
   res.json({ products });
 }

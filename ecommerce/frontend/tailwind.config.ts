@@ -1,49 +1,43 @@
 import type { Config } from 'tailwindcss';
 
 /**
- * Design tokens: minimal + compact. Monochrome palette, hairline borders, no shadows,
- * small type (14px base) and tight spacing so more of the catalogue fits on screen.
+ * Design tokens. Every colour is an RGB triplet CSS variable (set per theme / per section "tone"
+ * in globals.css) so Tailwind opacity modifiers keep working: `border-fg/30`, `bg-panel/60`, ...
  */
+const v = (name: string) => `rgb(var(--${name}) / <alpha-value>)`;
+
 const config: Config = {
   content: ['./src/**/*.{ts,tsx}'],
   theme: {
     extend: {
       colors: {
-        ink: '#111111', // primary text + primary buttons
-        mute: '#6b6b6b', // secondary text
-        canvas: '#f6f6f6', // soft grey surface
-        line: '#e4e4e4', // hairlines / input borders
-        warn: '#b45309', // "only 3 left" highlights
-        accent: {
-          DEFAULT: '#111111',
-          hover: '#2a2a2a',
-          link: '#111111',
-          ondark: '#ffffff',
-        },
+        bg: v('bg'), // page / section background
+        fg: v('fg'), // body text
+        head: v('head'), // headings
+        panel: v('panel'), // raised surfaces, inputs
+        accent: v('accent'), // brand purple (fills)
+        onaccent: v('onaccent'), // text on accent fills
+        accentfg: v('accentfg'), // accent used as text colour
+        warn: v('warn'), // amber for warnings / low stock
+        danger: '#f92e21',
+        ok: '#47d1b5',
       },
       fontFamily: {
-        sans: [
-          '-apple-system',
-          'BlinkMacSystemFont',
-          '"SF Pro Text"',
-          'var(--font-inter)',
-          '"Helvetica Neue"',
-          'Helvetica',
-          'Arial',
-          'sans-serif',
-        ],
+        sans: ['var(--font-sans)', '"Untitled Sans"', 'Helvetica Neue', 'Arial', 'sans-serif'],
+        mono: ['var(--font-mono)', '"Degrad Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
       },
       keyframes: {
-        'fade-up': { from: { opacity: '0', transform: 'translateY(6px)' }, to: { opacity: '1', transform: 'none' } },
+        marquee: { from: { transform: 'translateX(0)' }, to: { transform: 'translateX(-50%)' } },
         'fade-in': { from: { opacity: '0' }, to: { opacity: '1' } },
-        pop: { '0%': { transform: 'scale(.6)', opacity: '0' }, '60%': { transform: 'scale(1.15)' }, '100%': { transform: 'scale(1)', opacity: '1' } },
+        'fade-up': { from: { opacity: '0', transform: 'translateY(14px)' }, to: { opacity: '1', transform: 'none' } },
         shimmer: { from: { backgroundPosition: '200% 0' }, to: { backgroundPosition: '-200% 0' } },
+        spin: { to: { transform: 'rotate(360deg)' } },
       },
       animation: {
-        'fade-up': 'fade-up .25s ease-out both',
-        'fade-in': 'fade-in .15s ease-out both',
-        pop: 'pop .3s cubic-bezier(.22,.61,.36,1) both',
-        shimmer: 'shimmer 1.4s linear infinite',
+        marquee: 'marquee 40s linear infinite',
+        'fade-in': 'fade-in .25s ease-out both',
+        'fade-up': 'fade-up .5s cubic-bezier(.22,.61,.36,1) both',
+        shimmer: 'shimmer 1.6s linear infinite',
       },
     },
   },
